@@ -2,8 +2,10 @@
 log*
 __pycache__/
 etc/
+test-logs/
 
 *.tmp
 *.env
+# test-code.py
 
 !.gitignore
