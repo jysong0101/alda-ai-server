@@ -2,7 +2,7 @@
 log*
 __pycache__/
 etc/
-test-logs/
+*-logs/
 
 *.tmp
 *.env
