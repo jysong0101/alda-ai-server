@@ -6,6 +6,5 @@ etc/
 
 *.tmp
 *.env
-# test-code.py
 
 !.gitignore
