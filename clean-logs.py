@@ -1,7 +1,7 @@
 import os
 import logging
 
-LOGS_DIRECTORY = "logs"
+LOGS_DIRECTORY = "server-logs"
 TEST_LOGS_DIRECTORY = "test-logs"
 
 for filename in os.listdir(LOGS_DIRECTORY):

@@ -4,7 +4,7 @@ from model import analyze_emotion, generate_reaction
 import logging
 from datetime import datetime
 
-log_filename = f"logs/server_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+log_filename = f"server-logs/server_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
 logging.basicConfig(filename=log_filename, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', force=True)
 
 app = FastAPI()

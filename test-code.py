@@ -40,7 +40,7 @@ def test_react():
         logging.info("Starting React Test.")
         
         # 테스트 요청 보내기
-        response = requests.post(f"{BASE_URL}/react", json={"text": "오늘 하루는 정말 행복했어."})
+        response = requests.post(f"{BASE_URL}/react", json={"text": "오늘 하루는 정말 힘들었어."})
         logging.info(f"Request to /react sent. Status code: {response.status_code}")
         
         # 상태 코드 검증
