@@ -7,5 +7,5 @@ etc/
 *.tmp
 *.env
 
-
+# 제외
 !.gitignore
