@@ -1,13 +1,15 @@
 import os
 import logging
-from datetime import datetime
 
 LOGS_DIRECTORY = "logs"
-
-# deleted_files_count = 0
+TEST_LOGS_DIRECTORY = "test-logs"
 
 for filename in os.listdir(LOGS_DIRECTORY):
     file_path = os.path.join(LOGS_DIRECTORY, filename)
 
     os.remove(file_path)
-    # deleted_files_count += 1
+    
+for filename in os.listdir(TEST_LOGS_DIRECTORY):
+    file_path = os.path.join(TEST_LOGS_DIRECTORY, filename)
+
+    os.remove(file_path)
