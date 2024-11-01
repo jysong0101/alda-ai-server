@@ -53,9 +53,9 @@ sqlparse==0.5.1
 starlette==0.40.0
 sympy==1.13.1
 tokenizers==0.20.1
-torch==2.5.0+cu121
-torchaudio==2.5.0+cu121
-torchvision==0.20.0+cu121
+torch==2.5.0
+torchaudio==2.5.0
+torchvision==0.20.0
 tqdm==4.66.5
 transformers==4.45.2
 typing_extensions==4.12.2
