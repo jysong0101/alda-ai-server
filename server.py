@@ -12,6 +12,11 @@ app = FastAPI()
 class TextInput(BaseModel):
     text: str
 
+# 루트 경로 설정
+@app.get("/")
+async def root():
+    return {"message": "Server on"}
+
 # 감정 분석 API
 @app.post("/analyze")
 async def analyze_text(input: TextInput):

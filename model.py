@@ -80,7 +80,7 @@ def generate_reaction(sentence: str):
         prompt = reaction_prompt_template.format(sentence=sentence)
 
         # 모델에 프롬프트 전달 및 응답 생성
-        response = llm(prompt=prompt, max_tokens=150, stop=None)
+        response = llm(prompt=prompt, max_tokens=300, stop=None)
         output_text = response["choices"][0]["text"]
 
         logging.info(f"Output text: '{output_text}'")
