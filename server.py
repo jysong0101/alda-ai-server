@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from model import analyze_emotion, generate_reaction
 import logging
 from datetime import datetime
+from fastapi.responses import JSONResponse
 
 log_filename = f"server-logs/server_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
 logging.basicConfig(filename=log_filename, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', force=True)
@@ -16,11 +17,6 @@ class TextInput(BaseModel):
 @app.get("/")
 async def root():
     return {"message": "Server on"}
-
-from fastapi.responses import JSONResponse
-
-from pydantic import BaseModel
-from fastapi.responses import JSONResponse
 
 # 반환 데이터 모델 정의
 class EmotionResponse(BaseModel):
