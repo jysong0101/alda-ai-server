@@ -61,10 +61,10 @@ def analyze_emotion(sentence: str):
 
         response_parts = output_text.split()
         result = {
-            "Sentence": sentence,
-            "Predict 1": response_parts[0] if len(response_parts) > 0 else "-1",
-            "Predict 2": response_parts[1] if len(response_parts) > 1 else "-1",
-            "Predict 3": response_parts[2] if len(response_parts) > 2 else "-1",
+            "sentence": sentence,
+            "predict1": response_parts[0] if len(response_parts) > 0 else "-1",
+            "predict2": response_parts[1] if len(response_parts) > 1 else "-1",
+            "predict3": response_parts[2] if len(response_parts) > 2 else "-1",
         }
 
         logging.info(f"Processed sentence: {sentence} | Result: {result}")
@@ -96,9 +96,9 @@ def generate_reaction(sentence: str):
             diary_reaction = "반응 2 생성 실패"
 
         result = {
-            "Sentence": sentence,
-            "Response 1": friend_reaction,
-            "Response 2": diary_reaction
+            "sentence": sentence,
+            "response1": friend_reaction,
+            "response2": diary_reaction
         }
 
         logging.info(f"Processed sentence: {sentence} | Result: {result}")
