@@ -24,7 +24,7 @@ llm = Llama(
 analyze_prompt_template = (
     "You're helpful sentiment analyzer. "
     "Given a sentence, determine which emotion is most dominant. "
-    "The emotions are fear (0), surprise (1), anger (2), sadness (3), neutral (4), happiness (5), and disgust (6). "
+    "The emotions are HAPPY (0), SAD (1), ANGERY (2), FEAR (3), SURPRISE (4), DISGUST (5), and NEUTRAL (6). "
     "Answer with only the number corresponding to the emotion. "
     "The response should not contain any other characters. "
     "For each sentence, you HAVE TO list the top THREE dominant emotions in order. "

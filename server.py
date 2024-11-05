@@ -17,13 +17,30 @@ class TextInput(BaseModel):
 async def root():
     return {"message": "Server on"}
 
+from fastapi.responses import JSONResponse
+
+from pydantic import BaseModel
+from fastapi.responses import JSONResponse
+
+# 반환 데이터 모델 정의
+class EmotionResponse(BaseModel):
+    sentence: str
+    predict1: str
+    predict2: str
+    predict3: str
+
+class ReactionResponse(BaseModel):
+    sentence: str
+    response1: str
+    response2: str
+
 # 감정 분석 API
-@app.post("/analyze")
+@app.post("/analyze", response_model=EmotionResponse)
 async def analyze_text(input: TextInput):
     try:
         logging.info(f"Received text: {input.text}")
         result = analyze_emotion(input.text)
-        return result
+        return JSONResponse(content=result)
     except HTTPException as e:
         logging.error(f"HTTPException during processing: {e}")
         raise e
@@ -32,12 +49,12 @@ async def analyze_text(input: TextInput):
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 # 반응 생성 API
-@app.post("/react")
+@app.post("/react", response_model=ReactionResponse)
 async def react_text(input: TextInput):
     try:
         logging.info(f"Received text: {input.text}")
         result = generate_reaction(input.text)
-        return result
+        return JSONResponse(content=result)
     except HTTPException as e:
         logging.error(f"HTTPException during processing: {e}")
         raise e
