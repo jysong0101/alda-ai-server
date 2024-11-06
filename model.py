@@ -3,6 +3,7 @@ import logging
 from llama_cpp import Llama
 from huggingface_hub import hf_hub_download
 from fastapi import HTTPException
+import markdown2
 
 # GGUF 모델을 사용하기 위한 경로 설정
 model_name_or_path = "heegyu/EEVE-Korean-Instruct-10.8B-v1.0-GGUF"
@@ -44,7 +45,6 @@ reaction_prompt_template = (
     "Sentence: {sentence}\n"
 )
 
-# 괄호 안의 텍스트 제거 함수
 def remove_brackets(text: str) -> str:
     return re.sub(r'\(.*?\):', '', text).strip()
 
@@ -106,3 +106,67 @@ def generate_reaction(sentence: str):
     except Exception as e:
         logging.error(f"Error generating reaction for sentence '{sentence}': {e}")
         raise HTTPException(status_code=500, detail="Reaction generation failed.")
+
+def markdown_to_text(content: str) -> str:
+    # 마크다운을 HTML로 변환한 뒤 텍스트만 추출
+    html = markdown2.markdown(content)
+    text = re.sub(r'<[^>]+>', '', html)  # HTML 태그 제거
+    text = re.sub(r'\s*\\n\s*', ' ', text)  # 모든 줄바꿈을 마침표와 공백으로 변환
+    text = re.sub(r'\s{2,}', ' ', text)  # 여러 개의 공백을 축소
+    return text.strip()
+
+def generate_feedback_segments(content: str):
+    try:
+        logging.info(f"Generating feedback for content: {content}")
+        
+        # 마크다운을 순수 텍스트로 변환
+        plain_text_content = markdown_to_text(content)
+        
+        logging.info(plain_text_content)
+        
+        # 문장별로 분리
+        sentences = re.split(r'(?<=[.!?])\s+(?=[가-힣A-Za-z])', plain_text_content)
+        
+        feedback_segments = []
+        start_index = 0
+
+        for sentence in sentences:
+            sentence = sentence.strip()
+            if not sentence:  # 빈 문장 무시
+                continue
+
+            end_index = start_index + len(sentence)
+            
+            # 문장별 간결한 감정적 반응 생성
+            try:
+                prompt = (
+                    f"Read the provided sentence and respond as if you are a friend of the person who wrote it. "
+                    f"Give a short, concise emotional response (1-2 sentences and 50 letters maximum). "
+                    f"Sentence: {sentence}\nFriend's response:"
+                )
+                logging.info(f"Prompt for sentence: {sentence}")
+                
+                response = llm(prompt=prompt, max_tokens=80, stop=["\n"])
+                feedback_text = response["choices"][0]["text"].strip()
+                
+            except Exception as e:
+                logging.error(f"Error generating feedback for sentence '{sentence}': {e}")
+                feedback_text = "피드백 생성 실패"
+
+            feedback_segments.append({
+                "startIndex": start_index,
+                "endIndex": end_index,
+                "feedback": feedback_text
+            })
+            
+            start_index = end_index + 1
+
+        result = {
+            "feedback_segments": feedback_segments
+        }
+
+        logging.info(f"Generated feedback result: {result}")
+        return result
+    except Exception as e:
+        logging.error(f"Error generating feedback for content '{content}': {e}")
+        raise HTTPException(status_code=500, detail="Feedback generation failed.")
