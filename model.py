@@ -137,22 +137,36 @@ def generate_feedback_segments(content: str):
 
             end_index = start_index + len(sentence)
             
-            # 문장별 간결한 감정적 반응 생성
-            try:
-                prompt = (
-                    f"Read the provided sentence and respond as if you are a friend of the person who wrote it. "
-                    f"Give a short, concise emotional response (1-2 sentences and 50 letters maximum). "
-                    f"Sentence: {sentence}\nFriend's response:"
-                )
-                logging.info(f"Prompt for sentence: {sentence}")
-                
-                response = llm(prompt=prompt, max_tokens=80, stop=["\n"])
-                feedback_text = response["choices"][0]["text"].strip()
-                
-            except Exception as e:
-                logging.error(f"Error generating feedback for sentence '{sentence}': {e}")
-                feedback_text = "피드백 생성 실패"
+            feedback_text = ""
+            attempt_count = 1
+            max_attempts = 6
 
+            while not feedback_text and attempt_count < max_attempts:
+                try:
+                    prompt = (
+                        f"Read the provided sentence and respond as if you are a friend of the person who wrote it. "
+                        f"Give a short, concise emotional response (1-2 sentences and 100 letters maximum). "
+                        f"You Must use language Korean and use following tone: ~해, It's like a real friend."
+                        f"Sentence: {sentence}\nFriend's response:"
+                    )
+                    logging.info(f"Prompt for sentence: {sentence}")
+                    logging.info(f"Tring make feedback... (try conut : {attempt_count})")
+                    
+                    response = llm(prompt=prompt, max_tokens=150, stop=["\n"])
+                    feedback_text = response["choices"][0]["text"].strip()
+                    
+                except Exception as e:
+                    logging.error(f"Error generating feedback for sentence '{sentence}': {e}")
+                    feedback_text = ""
+
+                attempt_count += 1
+
+            # 시도 후에도 빈 피드백일 경우
+            if not feedback_text:
+                feedback_text = "피드백 생성 실패"
+            
+            logging.info(f"Generated feedback for sentence: '{sentence}' -> '{feedback_text}'")  # 생성된 피드백을 로그에 기록
+            
             feedback_segments.append({
                 "startIndex": start_index,
                 "endIndex": end_index,

@@ -61,19 +61,7 @@ async def react_text(input: TextInput):
 
 
 class FeedbackInput(BaseModel):
-    markdown_content: str
-
-class FeedbackSegment(BaseModel):
-    startIndex: int
-    endIndex: int
-    feedback: str
-
-class FeedbackResponse(BaseModel):
-    sentence: str
-    feedback_segments: List[FeedbackSegment]
-
-class FeedbackInput(BaseModel):
-    content: str
+    text: str
 
 class FeedbackSegment(BaseModel):
     startIndex: int
@@ -87,8 +75,8 @@ class FeedbackResponse(BaseModel):
 @app.post("/generate_feedback", response_model=FeedbackResponse)
 async def generate_feedback(input: FeedbackInput):
     try:
-        logging.info(f"Received content for feedback: {input.content}")
-        result = generate_feedback_segments(input.content)
+        logging.info(f"Received content for feedback: {input.text}")
+        result = generate_feedback_segments(input.text)
         return JSONResponse(content=result) 
     except HTTPException as e:
         logging.error(f"HTTPException during processing: {e}")
@@ -103,4 +91,3 @@ if __name__ == "__main__":
     logging.info("Starting server.")
     uvicorn.run(app, host="0.0.0.0", port=8000)
     logging.info("Server shutdown.")
-
