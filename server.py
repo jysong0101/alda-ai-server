@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from model import analyze_emotion, generate_feedback_segments, generate_reaction
+from reg_model import generate_feedback_with_reg
 import logging
 from datetime import datetime
 from fastapi.responses import JSONResponse
@@ -14,12 +15,10 @@ app = FastAPI()
 class TextInput(BaseModel):
     text: str
 
-# 루트 경로 설정
 @app.get("/")
 async def root():
     return {"message": "Server on"}
 
-# 반환 데이터 모델 정의
 class EmotionResponse(BaseModel):
     sentence: str
     predict1: str
@@ -31,7 +30,6 @@ class ReactionResponse(BaseModel):
     response1: str
     response2: str
 
-# 감정 분석 API
 @app.post("/analyze", response_model=EmotionResponse)
 async def analyze_text(input: TextInput):
     try:
@@ -45,7 +43,6 @@ async def analyze_text(input: TextInput):
         logging.error(f"Unexpected error: {e}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
-# 반응 생성 API
 @app.post("/react", response_model=ReactionResponse)
 async def react_text(input: TextInput):
     try:
@@ -59,7 +56,6 @@ async def react_text(input: TextInput):
         logging.error(f"Unexpected error: {e}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
-
 class FeedbackInput(BaseModel):
     text: str
 
@@ -71,7 +67,6 @@ class FeedbackSegment(BaseModel):
 class FeedbackResponse(BaseModel):
     feedback_segments: List[FeedbackSegment]
 
-# 문장별 피드백 생성 API
 @app.post("/generate_feedback", response_model=FeedbackResponse)
 async def generate_feedback(input: FeedbackInput):
     try:
@@ -85,7 +80,19 @@ async def generate_feedback(input: FeedbackInput):
         logging.error(f"Unexpected error: {e}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
-# 서버 실행
+@app.post("/generate_feedback_reg", response_model=FeedbackResponse)
+async def generate_feedback_reg(input: FeedbackInput):
+    try:
+        logging.info(f"Received content for feedback with registry: {input.text}")
+        result = generate_feedback_with_reg(input.text)
+        return JSONResponse(content=result)
+    except HTTPException as e:
+        logging.error(f"HTTPException during processing: {e}")
+        raise e
+    except Exception as e:
+        logging.error(f"Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
 if __name__ == "__main__":
     import uvicorn
     logging.info("Starting server.")
