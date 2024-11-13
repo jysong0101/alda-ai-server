@@ -1,7 +1,8 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from model import analyze_emotion, generate_feedback_segments, generate_reaction
-from reg_model import generate_feedback_with_reg
+from reg_model import generate_feedback_with_reg_chain as generate_feedback_with_reg
+
 import logging
 from datetime import datetime
 from fastapi.responses import JSONResponse
