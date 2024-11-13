@@ -146,7 +146,9 @@ def generate_feedback_segments(content: str):
                     prompt = (
                         f"Read the provided sentence and respond as if you are a friend of the person who wrote it. "
                         f"Give a short, concise emotional response (1-2 sentences and 100 letters maximum). "
-                        f"You Must use language Korean and use following tone: ~해, It's like a real friend."
+                        f"You Must use language Korean and use following tone: '~해', It's like a real friend."
+                        f"When making sentences, always focus on the fact that this is part of a diary. "
+                        f"And when calling someone, always call them '친구' or '친구야'."
                         f"Sentence: {sentence}\nFriend's response:"
                     )
                     logging.info(f"Prompt for sentence: {sentence}")
