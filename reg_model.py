@@ -11,7 +11,6 @@ import markdown2
 from sentence_transformers import SentenceTransformer
 from typing import List, Tuple
 
-# 모델 초기 설정
 model_name_or_path = "heegyu/EEVE-Korean-Instruct-10.8B-v1.0-GGUF"
 model_basename = "ggml-model-Q4_K_M.gguf"
 model_path = hf_hub_download(repo_id=model_name_or_path, filename=model_basename)
@@ -24,15 +23,15 @@ llm = Llama(
     n_ctx=4096
 )
 
-# 임베딩 모델 설정 (예: Sentence-BERT)
+# 임베딩 모델
 embedding_model = SentenceTransformer('jhgan/ko-sroberta-multitask')
 
 # FAISS 인덱스 초기화
-embedding_dim = 768  # 모델의 임베딩 차원 (Sentence-BERT의 경우 768)
+embedding_dim = 768  # 임베딩 차원 설정
 index = faiss.IndexFlatL2(embedding_dim)
 vector_db = []  # 임베딩과 텍스트를 저장할 리스트
 
-# Step 1: Load registry to FAISS vector store
+# FAISS vector store에 추가
 def load_registry_to_db():
     reg_path = "reg.txt"
     if not os.path.exists(reg_path):
@@ -50,20 +49,20 @@ def load_registry_to_db():
 
 load_registry_to_db()
 
-# Step 2: Preprocess input content
+# 문장 자르기
 def preprocess_content(content: str) -> List[str]:
     plain_text_content = markdown_to_text(content)
     sentences = re.split(r'(?<=[.!?])\s+(?=[가-힣A-Za-z])', plain_text_content)
     return [sentence.strip() for sentence in sentences if sentence.strip()]
 
-# Step 3: Search related sentences in the vector store
+# 연관된 문장 탐색
 def search_related_sentences(input_text: str, top_k=3) -> List[str]:
     input_embedding = embedding_model.encode(input_text).astype(np.float32)
     _, indices = index.search(np.array([input_embedding]), top_k)
     related_sentences = [vector_db[idx][0] for idx in indices[0]]
     return related_sentences
 
-# Step 4: Generate prompt for feedback generation
+# 프롬프트 생성
 def generate_prompt(sentence: str, related_context: str) -> str:
     prompt = (
         f"New sentence from diary: {sentence}\n\n"
@@ -77,7 +76,7 @@ def generate_prompt(sentence: str, related_context: str) -> str:
     )
     return prompt
 
-# Step 5: Generate feedback based on prompt with retry mechanism
+# 답변 생성
 def generate_feedback(prompt: str) -> str:
     feedback_text = ""
     attempt_count = 1
@@ -99,7 +98,7 @@ def generate_feedback(prompt: str) -> str:
 
     return feedback_text
 
-# Step 6: Append sentence to registry
+# ret.txt & vecter DB 갱신 용도
 def append_to_registry(sentence: str):
     reg_path = "reg.txt"
     date_str = datetime.now().strftime("%Y-%m-%d")
@@ -110,7 +109,7 @@ def append_to_registry(sentence: str):
     vector_db.append((sentence, embedding))
     index.add(np.array([embedding], dtype=np.float32))
 
-# Main Chain Function
+# chain의 main function
 def generate_feedback_with_reg_chain(content: str):
     try:
         logging.info(f"Generating feedback with registry for content: {content}")
@@ -131,7 +130,7 @@ def generate_feedback_with_reg_chain(content: str):
                 "feedback": feedback_text
             })
 
-            append_to_registry(sentence)  # Save to reg.txt and vector DB
+            append_to_registry(sentence)  # ret.txt & vector DB 갱신
             start_index = end_index + 1
 
         result = {"feedback_segments": feedback_segments}
