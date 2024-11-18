@@ -7,7 +7,7 @@ etc/
 *.tmp
 *.env
 
-reg.txt
+rag.txt
 
 
 # 제외

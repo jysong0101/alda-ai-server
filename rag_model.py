@@ -56,7 +56,7 @@ def preprocess_content(content: str) -> List[str]:
     return [sentence.strip() for sentence in sentences if sentence.strip()]
 
 # 연관된 문장 탐색
-def search_related_sentences(input_text: str, top_k=3) -> List[str]:
+def search_related_sentences(input_text: str, top_k=1) -> List[str]:
     input_embedding = embedding_model.encode(input_text).astype(np.float32)
     _, indices = index.search(np.array([input_embedding]), top_k)
     related_sentences = [vector_db[idx][0] for idx in indices[0]]
@@ -67,12 +67,14 @@ def generate_prompt(sentence: str, related_context: str) -> str:
     prompt = (
         f"New sentence from diary: {sentence}\n\n"
         f"Related previous entries: {related_context}\n\n"
+        f"You are a friendly AI helper who provides reaction on your diary entries."
         f"Considering these entries, respond as a close friend with an emotionally supportive response. "
         f"If there are any related topics or emotions in the previous entries, make sure to incorporate them in your response to provide a more personalized and context-aware reply. "
         f"You must use Korean language and the following tone: '~해', as if you're a real friend. "
+        f"Treat them like friends, but always keep in mind that they are not real friends."
         f"When creating sentences, always remember this is part of a diary. "
-        f"And when addressing someone, always call them '친구' or '친구야'."
-        f"\nSentence: {sentence}\nFriend's response:"
+        f"If you ever find yourself in a situation where you need to refer to someone, use the term '친구'."
+        f"\nSentence: {sentence}\nResponse:"
     )
     return prompt
 
@@ -109,7 +111,6 @@ def append_to_ragistry(sentence: str):
     vector_db.append((sentence, embedding))
     index.add(np.array([embedding], dtype=np.float32))
 
-# chain의 main function
 def generate_feedback_with_rag_chain(content: str):
     try:
         logging.info(f"Generating feedback with RAG for content: {content}")
@@ -130,6 +131,10 @@ def generate_feedback_with_rag_chain(content: str):
                 "feedback": feedback_text
             })
 
+            # 로그에 각 문장별 생성된 피드백 기록
+            logging.info(f"Sentence: {sentence}")
+            logging.info(f"Generated feedback: {feedback_text}")
+
             append_to_ragistry(sentence)  # rag.txt & vector DB 갱신
             start_index = end_index + 1
 
@@ -139,6 +144,7 @@ def generate_feedback_with_rag_chain(content: str):
     except Exception as e:
         logging.error(f"Error generating feedback with RAG for content '{content}': {e}")
         raise HTTPException(status_code=500, detail="Feedback generation with RAG failed.")
+
 
 def markdown_to_text(content: str) -> str:
     html = markdown2.markdown(content)

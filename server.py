@@ -81,11 +81,11 @@ async def generate_feedback(input: FeedbackInput):
         logging.error(f"Unexpected error: {e}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
-@app.post("/generate_feedback_reg", response_model=FeedbackResponse)
-async def generate_feedback_reg(input: FeedbackInput):
+@app.post("/generate_feedback_rag", response_model=FeedbackResponse)
+async def generate_feedback_rag(input: FeedbackInput):
     try:
         logging.info(f"Received content for feedback with registry: {input.text}")
-        result = generate_feedback_with_reg(input.text)
+        result = generate_feedback_with_rag(input.text)
         return JSONResponse(content=result)
     except HTTPException as e:
         logging.error(f"HTTPException during processing: {e}")
