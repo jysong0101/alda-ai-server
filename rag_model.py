@@ -32,13 +32,13 @@ index = faiss.IndexFlatL2(embedding_dim)
 vector_db = []  # 임베딩과 텍스트를 저장할 리스트
 
 # FAISS vector store에 추가
-def load_registry_to_db():
-    reg_path = "reg.txt"
-    if not os.path.exists(reg_path):
-        logging.warning("Registry file not found.")
+def load_ragistry_to_db():
+    rag_path = "rag.txt"
+    if not os.path.exists(rag_path):
+        logging.warning("RAG file not found.")
         return
 
-    with open(reg_path, "r", encoding="utf-8") as f:
+    with open(rag_path, "r", encoding="utf-8") as f:
         content = f.read()
 
     sentences = re.split(r'(?<=[.!?])\s+(?=[가-힣A-Za-z])', content)
@@ -47,7 +47,7 @@ def load_registry_to_db():
         vector_db.append((sentence, embedding))
         index.add(np.array([embedding], dtype=np.float32))  # FAISS 인덱스에 추가
 
-load_registry_to_db()
+load_ragistry_to_db()
 
 # 문장 자르기
 def preprocess_content(content: str) -> List[str]:
@@ -80,7 +80,7 @@ def generate_prompt(sentence: str, related_context: str) -> str:
 def generate_feedback(prompt: str) -> str:
     feedback_text = ""
     attempt_count = 1
-    max_attempts = 5  # 최대 시도 횟수 설정
+    max_attempts = 5
 
     while not feedback_text and attempt_count <= max_attempts:
         try:
@@ -98,11 +98,11 @@ def generate_feedback(prompt: str) -> str:
 
     return feedback_text
 
-# ret.txt & vecter DB 갱신 용도
-def append_to_registry(sentence: str):
-    reg_path = "reg.txt"
+# rag.txt & vector DB 갱신 용도
+def append_to_ragistry(sentence: str):
+    rag_path = "rag.txt"
     date_str = datetime.now().strftime("%Y-%m-%d")
-    with open(reg_path, "a", encoding="utf-8") as f:
+    with open(rag_path, "a", encoding="utf-8") as f:
         f.write(f"[{date_str}] {sentence}\n")
 
     embedding = embedding_model.encode(sentence).astype(np.float32)
@@ -110,9 +110,9 @@ def append_to_registry(sentence: str):
     index.add(np.array([embedding], dtype=np.float32))
 
 # chain의 main function
-def generate_feedback_with_reg_chain(content: str):
+def generate_feedback_with_rag_chain(content: str):
     try:
-        logging.info(f"Generating feedback with registry for content: {content}")
+        logging.info(f"Generating feedback with RAG for content: {content}")
         sentences = preprocess_content(content)
         feedback_segments = []
         start_index = 0
@@ -130,15 +130,15 @@ def generate_feedback_with_reg_chain(content: str):
                 "feedback": feedback_text
             })
 
-            append_to_registry(sentence)  # ret.txt & vector DB 갱신
+            append_to_ragistry(sentence)  # rag.txt & vector DB 갱신
             start_index = end_index + 1
 
         result = {"feedback_segments": feedback_segments}
-        logging.info(f"Generated feedback result with registry: {result}")
+        logging.info(f"Generated feedback result with RAG: {result}")
         return result
     except Exception as e:
-        logging.error(f"Error generating feedback with registry for content '{content}': {e}")
-        raise HTTPException(status_code=500, detail="Feedback generation with registry failed.")
+        logging.error(f"Error generating feedback with RAG for content '{content}': {e}")
+        raise HTTPException(status_code=500, detail="Feedback generation with RAG failed.")
 
 def markdown_to_text(content: str) -> str:
     html = markdown2.markdown(content)
