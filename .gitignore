@@ -8,7 +8,8 @@ etc/
 *.env
 
 rag.txt
-
+rag_*.txt
+ragList/
 
 # 제외
 !.gitignore
