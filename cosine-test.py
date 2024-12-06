@@ -23,29 +23,34 @@ llm = Llama(
     n_ctx=4096
 )
 
-
 # 임베딩 모델 및 전역 변수 초기화
 embedding_model = SentenceTransformer('jhgan/ko-sroberta-multitask')
 embedding_dim = 768
 
-# 사용자별 벡터 DB와 인덱스 관리
-user_vector_db: Dict[str, List[Tuple[str, np.ndarray]]] = {}  # 사용자별 (문장, 임베딩) 저장
-user_indices: Dict[str, faiss.IndexFlatL2] = {}  # 사용자별 FAISS 인덱스
+# 사용자별 벡터 DB와 인덱스 관리 (코사인 유사도용)
+user_vector_db: Dict[str, List[Tuple[str, np.ndarray]]] = {}  # 사용자별 (문장, 정규화된 임베딩) 저장
+user_indices: Dict[str, faiss.IndexFlatIP] = {}  # 사용자별 FAISS 인덱스 (Inner Product)
+
+
+def normalize_vector(v: np.ndarray) -> np.ndarray:
+    """
+    벡터를 정규화하여 크기를 1로 맞춤.
+    """
+    norm = np.linalg.norm(v)
+    if norm == 0:
+        return v
+    return v / norm
 
 def preprocess_content(content: str) -> List[str]:
     sentences = re.split(r'(?<=[.!?])\s+(?=[가-힣A-Za-z])', content)
     return [sentence.strip() for sentence in sentences if sentence.strip()]
-
 # 다이어리 데이터를 벡터 DB에 추가
 def add_diary_entry_to_db(member_id: str, diary_entry: dict):
-    """
-    사용자별 벡터 DB 및 RAG 파일에 일기 데이터를 추가.
-    """
     global user_vector_db, user_indices
 
     # 사용자에 대한 인덱스가 없으면 새로 생성
     if member_id not in user_indices:
-        user_indices[member_id] = faiss.IndexFlatL2(embedding_dim)
+        user_indices[member_id] = faiss.IndexFlatIP(embedding_dim)  # 코사인 유사도를 위한 Inner Product 인덱스
         user_vector_db[member_id] = []
 
     # 일기 내용 처리
@@ -55,8 +60,9 @@ def add_diary_entry_to_db(member_id: str, diary_entry: dict):
     # 벡터 DB와 RAG 파일에 추가
     for sentence in sentences:
         embedding = embedding_model.encode(sentence).astype(np.float32)
-        user_vector_db[member_id].append((sentence, embedding))
-        user_indices[member_id].add(np.array([embedding], dtype=np.float32))
+        normalized_embedding = normalize_vector(embedding)  # 정규화
+        user_vector_db[member_id].append((sentence, normalized_embedding))
+        user_indices[member_id].add(np.array([normalized_embedding], dtype=np.float32))
 
     # RAG 파일 갱신
     rag_folder = "ragList"
@@ -68,9 +74,8 @@ def add_diary_entry_to_db(member_id: str, diary_entry: dict):
         f.write(f"[{diary_entry['diaryEntryDate']}] {diary_entry['diaryContents']}\n")
 
     logging.info(f"Added diary entry for member {member_id} to vector DB and RAG.")
-
-# 사용자별 데이터 검색
-def search_related_sentences(member_id: str, input_text: str, top_k=3) -> List[str]:
+# 사용자별 데이터 검색 (코사인 유사도)
+def search_related_sentences(member_id: str, input_text: str, top_k=1) -> List[str]:
     """
     사용자(member_id)별 데이터를 기반으로 관련 문장 검색.
     """
@@ -78,9 +83,11 @@ def search_related_sentences(member_id: str, input_text: str, top_k=3) -> List[s
         raise HTTPException(status_code=404, detail=f"No data found for memberId {member_id}")
 
     input_embedding = embedding_model.encode(input_text).astype(np.float32)
-    _, indices = user_indices[member_id].search(np.array([input_embedding]), top_k)
+    normalized_input = normalize_vector(input_embedding)  # 입력 벡터 정규화
+    _, indices = user_indices[member_id].search(np.array([normalized_input]), top_k)
     related_sentences = [user_vector_db[member_id][idx][0] for idx in indices[0]]
     return related_sentences
+
 
 # 프롬프트 생성
 def generate_prompt(sentence: str, related_context: str) -> str:
@@ -94,7 +101,9 @@ def generate_prompt(sentence: str, related_context: str) -> str:
         f"You must use Korean language and the following tone: '~해', as if you're a real friend."
         f"If you ever need to call someone, use the word '친구' or '친구야'."
         f"Respond as if you were a friend, but keep in mind that you are not a real friend."
-        f"\nSentence: {sentence}\nResponse:"
+        f"Think of me as a human being and give me a friendly and proper answer."
+        #f"\nSentence: {sentence}\nResponse:"
+        f"Response:"
     )
     return prompt
 
@@ -107,7 +116,7 @@ def generate_feedback(prompt: str) -> str:
     while not feedback_text and attempt_count <= max_attempts:
         try:
             logging.info(f"Attempt {attempt_count}: Generating feedback.")
-            response = llm(prompt=prompt, max_tokens=300, stop=["\n"])
+            response = llm(prompt=prompt, max_tokens=150, stop=["\n"])
             feedback_text = response["choices"][0]["text"].strip()
         except Exception as e:
             logging.error(f"Error generating feedback on attempt {attempt_count}: {e}")
@@ -129,11 +138,11 @@ def generate_feedback_with_rag_chain(member_id: str, content: str):
         for sentence in sentences:
             # 관련 문장 검색
             related_sentences = search_related_sentences(member_id, sentence)
-            related_context = " ".join(related_sentences[:3])  # 최대 3개의 문장만 포함
+            related_context = " ".join(related_sentences)
 
             # 프롬프트 생성
             prompt = generate_prompt(sentence, related_context)
-
+            
             # 피드백 생성
             feedback_text = generate_feedback(prompt)
 
@@ -153,21 +162,18 @@ def generate_feedback_with_rag_chain(member_id: str, content: str):
             start_index = end_index + 1
 
         result = {"feedback_segments": feedback_segments}
-        logging.info(f"Complete feedback result for memberId {member_id}: {result}")
-        return result
 
+        # 전체 피드백 로그
+        logging.info(f"Complete feedback result for memberId {member_id}: {result}")
+
+        return result
     except Exception as e:
         logging.error(f"Error generating feedback with RAG for content '{content}': {e}")
         raise HTTPException(status_code=500, detail="Feedback generation with RAG failed.")
-
     
 def load_rag_files():
-    """
-    서버 시작 시 ragList 폴더의 모든 rag_*.txt 파일을 읽어 벡터 DB와 FAISS 인덱스를 갱신.
-    """
     global user_vector_db, user_indices
 
-    # RAG 파일 경로 검색
     rag_folder = "ragList"
     if not os.path.exists(rag_folder):
         logging.warning(f"The folder '{rag_folder}' does not exist. No RAG files to load.")
@@ -176,31 +182,27 @@ def load_rag_files():
     rag_files = [f for f in os.listdir(rag_folder) if f.startswith('rag_') and f.endswith('.txt')]
 
     for rag_file in rag_files:
-        # 파일 이름에서 사용자 ID 추출
         member_id = rag_file[len('rag_'):-len('.txt')]
         logging.info(f"Loading RAG file for memberId: {member_id}")
 
-        # 사용자 벡터 DB와 인덱스 초기화
         if member_id not in user_indices:
-            user_indices[member_id] = faiss.IndexFlatL2(embedding_dim)
+            user_indices[member_id] = faiss.IndexFlatIP(embedding_dim)  # 코사인 유사도를 위한 Inner Product
             user_vector_db[member_id] = []
 
-        # 파일 내용 읽기
         file_path = os.path.join(rag_folder, rag_file)
         with open(file_path, 'r', encoding='utf-8') as f:
             lines = f.readlines()
 
-        # 각 줄 처리
         for line in lines:
             if not line.strip():
                 continue
-            # 날짜와 내용 분리: "[YYYY-MM-DD] 내용"
             match = re.match(r'\[(\d{4}-\d{2}-\d{2})\]\s*(.*)', line)
             if match:
-                diary_date, diary_contents = match.groups()
+                _, diary_contents = match.groups()
                 sentences = preprocess_content(diary_contents)
                 for sentence in sentences:
                     embedding = embedding_model.encode(sentence).astype(np.float32)
-                    user_vector_db[member_id].append((sentence, embedding))
-                    user_indices[member_id].add(np.array([embedding], dtype=np.float32))
+                    normalized_embedding = normalize_vector(embedding)  # 정규화
+                    user_vector_db[member_id].append((sentence, normalized_embedding))
+                    user_indices[member_id].add(np.array([normalized_embedding], dtype=np.float32))
         logging.info(f"Loaded RAG data for memberId {member_id}: {len(user_vector_db[member_id])} sentences")
