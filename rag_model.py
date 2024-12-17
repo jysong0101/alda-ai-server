@@ -1,6 +1,7 @@
 import os
 import re
 import logging
+import random 
 import faiss
 from fastapi import HTTPException
 import numpy as np
@@ -123,10 +124,18 @@ def generate_feedback(prompt: str) -> str:
 def generate_feedback_with_rag_chain(member_id: str, content: str):
     try:
         sentences = preprocess_content(content)
+        total_sentences = len(sentences)
+        if total_sentences == 0:
+            raise ValueError("No valid sentences found in the content.")
+
+        # 랜덤으로 30%의 문장 선택
+        num_feedback_sentences = max(1, int(total_sentences * 0.3))
+        sampled_sentences = random.sample(sentences, num_feedback_sentences)
+
         feedback_segments = []
         start_index = 0
 
-        for sentence in sentences:
+        for sentence in sampled_sentences:
             # 관련 문장 검색
             related_sentences = search_related_sentences(member_id, sentence)
             related_context = " ".join(related_sentences[:3])  # 최대 3개의 문장만 포함
@@ -143,14 +152,13 @@ def generate_feedback_with_rag_chain(member_id: str, content: str):
             logging.info(f"Generated feedback: {feedback_text}")
 
             # 결과 저장
+            start_index = content.find(sentence)  # 문장의 시작 위치
             end_index = start_index + len(sentence)
             feedback_segments.append({
                 "startIndex": start_index,
                 "endIndex": end_index,
                 "feedback": feedback_text
             })
-
-            start_index = end_index + 1
 
         result = {"feedback_segments": feedback_segments}
         logging.info(f"Complete feedback result for memberId {member_id}: {result}")
@@ -159,6 +167,7 @@ def generate_feedback_with_rag_chain(member_id: str, content: str):
     except Exception as e:
         logging.error(f"Error generating feedback with RAG for content '{content}': {e}")
         raise HTTPException(status_code=500, detail="Feedback generation with RAG failed.")
+
 
     
 def load_rag_files():
